@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   User,
+  Save,
   FolderPlus,
   ArrowLeft,
   ArrowRight,
@@ -261,9 +262,13 @@ function App() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <X />
               Cancel
             </Button>
-            <Button onClick={handleSave}>Save</Button>
+            <Button onClick={handleSave}>
+              <Save />
+              Save
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -285,9 +290,10 @@ function App() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setIsDocDialogOpen(false)}>
+              <X/>
               Cancel
             </Button>
-            <Button onClick={handleAddDocument}>Save</Button>
+            <Button onClick={handleAddDocument}><Save/>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
