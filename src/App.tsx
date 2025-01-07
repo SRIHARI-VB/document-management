@@ -1,14 +1,6 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -19,14 +11,15 @@ import { Input } from "@/components/ui/input";
 import {
   User,
   Save,
-  FolderPlus,
-  ArrowLeft,
-  ArrowRight,
   Trash2,
   Upload,
-  Eye,
+  Plus,
   X,
+  ArrowLeft,
+  ArrowRight,
+  File,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 function App() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -35,7 +28,8 @@ function App() {
   const [documentName, setDocumentName] = useState("");
   const [applicants, setApplicants] = useState([]);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
-  const [dragActive, setDragActive] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState(null);
+  const [filesSelected, setFilesSelected] = useState(false);
   const inputRef = useRef(null);
 
   const formatFileSize = (bytes) => {
@@ -79,34 +73,24 @@ function App() {
         return app;
       })
     );
-  };
-
-  const handleNavigation = (direction) => {
-    const currentIndex = applicants.findIndex(
-      (app) => app.id === selectedApplicant
-    );
-    if (direction === "next" && currentIndex < applicants.length - 1) {
-      setSelectedApplicant(applicants[currentIndex + 1].id);
-    } else if (direction === "back" && currentIndex > 0) {
-      setSelectedApplicant(applicants[currentIndex - 1].id);
+    if (selectedDocument === docId) {
+      setSelectedDocument(null);
     }
   };
 
   const handleAddDocument = () => {
     if (documentName.trim()) {
+      const newDocument = {
+        id: Date.now(),
+        name: documentName.trim(),
+        files: [],
+      };
       setApplicants(
         applicants.map((app) => {
           if (app.id === selectedApplicant) {
             return {
               ...app,
-              documents: [
-                ...app.documents,
-                {
-                  id: Date.now(),
-                  name: documentName.trim(),
-                  files: [],
-                },
-              ],
+              documents: [...app.documents, newDocument],
             };
           }
           return app;
@@ -114,42 +98,19 @@ function App() {
       );
       setDocumentName("");
       setIsDocDialogOpen(false);
-    }
-  };
-
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e, docId) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(e.dataTransfer.files, docId);
-    }
-  };
-
-  const handleChange = (e, docId) => {
-    e.preventDefault();
-    if (e.target.files && e.target.files.length > 0) {
-      handleFiles(e.target.files, docId);
+      setSelectedDocument(newDocument.id);
     }
   };
 
   const handleFiles = (files, docId) => {
-    const fileArray = Array.from(files).map((file) => ({
-      id: Date.now() + Math.random(),
-      file,
-      status: "pending",
-      size: file.size,
-    }));
+    const fileArray = Array.from(files)
+      .slice(0, 1)
+      .map((file) => ({
+        id: Date.now() + Math.random(),
+        file,
+        status: "pending",
+        size: file.size,
+      }));
 
     setApplicants(
       applicants.map((app) => {
@@ -160,7 +121,7 @@ function App() {
               if (doc.id === docId) {
                 return {
                   ...doc,
-                  files: [...doc.files, ...fileArray],
+                  files: fileArray, // Replace existing files with the new file
                 };
               }
               return doc;
@@ -170,9 +131,17 @@ function App() {
         return app;
       })
     );
+    setFilesSelected(true);
   };
 
-  const handleUpload = (docId, fileId) => {
+  const handleChange = (e, docId) => {
+    e.preventDefault();
+    if (e.target.files && e.target.files.length > 0) {
+      handleFiles(e.target.files, docId);
+    }
+  };
+
+  const handleUpload = (docId) => {
     setApplicants(
       applicants.map((app) => {
         if (app.id === selectedApplicant) {
@@ -182,12 +151,10 @@ function App() {
               if (doc.id === docId) {
                 return {
                   ...doc,
-                  files: doc.files.map((file) => {
-                    if (file.id === fileId) {
-                      return { ...file, status: "completed" };
-                    }
-                    return file;
-                  }),
+                  files: doc.files.map((file) => ({
+                    ...file,
+                    status: "completed",
+                  })),
                 };
               }
               return doc;
@@ -221,9 +188,43 @@ function App() {
     );
   };
 
-  const handleView = (file) => {
-    const fileUrl = URL.createObjectURL(file);
-    window.open(fileUrl, "_blank");
+  const handleCancel = (docId) => {
+    setApplicants(
+      applicants.map((app) => {
+        if (app.id === selectedApplicant) {
+          return {
+            ...app,
+            documents: app.documents.map((doc) => {
+              if (doc.id === docId) {
+                return {
+                  ...doc,
+                  files: [], // Clear files for this document only
+                };
+              }
+              return doc;
+            }),
+          };
+        }
+        return app;
+      })
+    );
+  };
+
+  const handleNavigation = (direction) => {
+    const currentIndex = applicants.findIndex(
+      (app) => app.id === selectedApplicant
+    );
+    let newIndex;
+
+    if (direction === "next") {
+      newIndex = currentIndex + 1;
+    } else if (direction === "back") {
+      newIndex = currentIndex - 1;
+    }
+
+    if (newIndex >= 0 && newIndex < applicants.length) {
+      setSelectedApplicant(applicants[newIndex].id);
+    }
   };
 
   const currentIndex = applicants.findIndex(
@@ -236,9 +237,9 @@ function App() {
   );
 
   return (
-    <div className="min-h-screen p-4 md:p-6 lg:py-8 lg:px-24">
+    <div className="min-h-screen p-4 md:p-6 lg:py-8 lg:px-8">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Document Upload</h1>
+        <h1 className="text-4xl font-bold tracking-tight">Document Upload</h1>
         <Button onClick={() => setIsDialogOpen(true)} className="sm:w-auto">
           <User className="mr-2 h-5 w-5" />
           Add Applicant
@@ -290,218 +291,209 @@ function App() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setIsDocDialogOpen(false)}>
-              <X/>
+              <X />
               Cancel
             </Button>
-            <Button onClick={handleAddDocument}><Save/>Save</Button>
+            <Button onClick={handleAddDocument}>
+              <Save />
+              Save
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {applicants.length === 0 ? (
-        <Card className="mx-auto max-w-2xl shadow-lg">
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl">No Applicants Added</CardTitle>
-            <CardDescription className="text-lg">
-              Get started by adding your first applicant
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4 p-6">
-            <div className="rounded-full bg-primary/10 p-6">
-              <FolderPlus className="h-14 w-14 text-primary" />
-            </div>
-            <div className="text-center">
-              <p className="text-lg text-muted-foreground">
-                Click the "Add Applicant" button above to start managing
-                documents for a new applicant.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <></>
       ) : (
         <div>
+          {/* Horizontal applicant tabs */}
           <div className="mb-4 flex items-center gap-2 border-b">
             {applicants.map((applicant) => (
               <div
                 key={applicant.id}
-                className={`relative cursor-pointer border-b-4 px-4 py-2 ${
+                className={`relative cursor-pointer border-b-2 px-4 py-4 ${
                   selectedApplicant === applicant.id
                     ? "border-primary text-primary"
                     : "border-transparent hover:border-gray-200"
                 }`}
                 onClick={() => setSelectedApplicant(applicant.id)}
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">{applicant.name}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 p-0 hover:bg-destructive/10 text-destructive hover:text-destructive "
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(applicant.id);
-                    }}
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </Button>
-                </div>
+                <span className="text-lg mr-4">{applicant.name}</span>
+                <Button
+                  variant="ghost"
+                  className="text-secondary bg-primary hover:text-primary hover:bg-primary/30"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(applicant.id);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             ))}
           </div>
 
           {selectedApplicant && (
             <div className="mt-6">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-lg text-muted-foreground">
-                  {currentApplicant?.documents.length === 0
-                    ? "No documents available"
-                    : `${currentApplicant?.documents.length} document(s)`}
-                </span>
-                <Button
-                  className="sm:w-auto"
-                  onClick={() => setIsDocDialogOpen(true)}
-                >
-                  <FolderPlus className="mr-2 h-5 w-5" />
-                  Add Document
-                </Button>
-              </div>
-
-              {currentApplicant?.documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="mb-6 border rounded-lg p-4 shadow-md"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-lg">{doc.name}</span>
-                      <Badge variant="secondary" className="text-lg">
-                        {doc.files.length} file(s)
-                      </Badge>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700"
-                      onClick={() => handleDeleteDocument(doc.id)}
+              {/* Vertical document tabs */}
+              <div className="flex gap-4">
+                <div className="">
+                  {currentApplicant?.documents.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className={`cursor-pointer text-center p-2 mb-2 ${
+                        selectedDocument === doc.id
+                          ? "bg-primary rounded-md text-secondary"
+                          : "hover:bg-gray-100"
+                      }`}
+                      onClick={() => setSelectedDocument(doc.id)}
                     >
-                      <Trash2 className="h-5 w-5 mr-1" />
-                      Delete Document
-                    </Button>
-                  </div>
-
-                  <div
-                    className={`border-2 border-dashed flex flex-col items-center gap-2 rounded-lg p-4 mb-4 ${
-                      dragActive ? "border-primary bg-primary/10" : ""
-                    }`}
-                    onDragEnter={(e) => handleDrag(e)}
-                    onDragLeave={(e) => handleDrag(e)}
-                    onDragOver={(e) => handleDrag(e)}
-                    onDrop={(e) => handleDrop(e, doc.id)}
+                      <span className="text-lg flex items-center justify-center font-medium">
+                        <File className="h-4 w-4 mr-2" />
+                        {doc.name}
+                      </span>
+                    </div>
+                  ))}
+                  {currentApplicant?.documents.length === 0 && (
+                    <p className="text-lg py-4">No Documents available</p>
+                  )}
+                  <Button
+                    onClick={() => setIsDocDialogOpen(true)}
+                    className="w-full my-2"
                   >
-                    <Upload className="w-12 h-12 text-muted-foreground" />
-                    <div className="flex justify-center mb-4">
+                    <Plus className="mr-2 h-4 w-4 " />
+                    Add Document
+                  </Button>
+                </div>
+
+                {/* File list for the selected document */}
+                {currentApplicant?.documents.length > 0 && (
+                  <div className="w-full border px-4 rounded-lg">
+                    {/* Card Header with Buttons */}
+                    <div className="flex gap-2 mb-4 bg-gray-50 border-b-4 py-2">
+                      <Button onClick={() => inputRef.current?.click()}>
+                        <Plus />
+                        Choose
+                      </Button>
                       <Button
-                        variant="outline"
-                        onClick={() => inputRef.current?.click()}
+                        disabled={
+                          currentApplicant?.documents.find(
+                            (doc) => doc.id === selectedDocument
+                          )?.files.length === 0
+                        }
+                        onClick={() => handleUpload(selectedDocument)} // Pass the selected document ID
                       >
-                        Choose Files
+                        <Upload />
+                        Upload
+                      </Button>
+                      <Button
+                        disabled={
+                          currentApplicant?.documents.find(
+                            (doc) => doc.id === selectedDocument
+                          )?.files.length === 0
+                        }
+                        onClick={() => handleCancel(selectedDocument)}
+                      >
+                        <X />
+                        Cancel
                       </Button>
                       <input
                         ref={inputRef}
                         type="file"
                         className="hidden"
-                        multiple
-                        onChange={(e) => handleChange(e, doc.id)}
+                        multiple={false} // Allow only one file to be selected
+                        onChange={(e) => handleChange(e, selectedDocument)}
                       />
                     </div>
-                    <p className="text-lg text-center text-muted-foreground">
-                      Drag and drop files here or click to browse
-                    </p>
-                  </div>
 
-                  {doc.files.map((file) => (
-                    <div
-                      key={file.id}
-                      className="flex items-center justify-between border rounded-lg p-3 mb-2 shadow-sm"
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className="font-medium text-lg">
-                          {file.file.name}
-                        </span>
-                        <span className="text-lg text-muted-foreground">
-                          {formatFileSize(file.size)}
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className={
-                            file.status === "completed"
-                              ? "bg-green-100 text-green-700 border-green-200 text-lg"
-                              : "bg-orange-100 text-orange-700 border-orange-200 text-lg"
-                          }
-                        >
-                          {file.status === "completed"
-                            ? "Completed"
-                            : "Pending"}
-                        </Badge>
-                      </div>
-                      <div className="flex gap-2">
-                        {file.status === "pending" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-blue-600 hover:text-blue-700"
-                            onClick={() => handleUpload(doc.id, file.id)}
+                    {/* File List */}
+                    {selectedDocument &&
+                      currentApplicant?.documents
+                        .find((doc) => doc.id === selectedDocument)
+                        ?.files.map((file) => (
+                          <div
+                            key={file.id}
+                            className="flex items-center justify-between p-3 border rounded-lg mb-2"
                           >
-                            <Upload className="h-5 w-5 mr-1" />
-                            Upload
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-gray-600 hover:text-gray-700"
-                          onClick={() => handleView(file.file)}
-                        >
-                          <Eye className="h-5 w-5 mr-1" />
-                          View
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => handleDeleteFile(doc.id, file.id)}
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      </div>
+                            <div className="flex items-center gap-4">
+                              {file.file.type.startsWith("image/") && (
+                                <img
+                                  src={URL.createObjectURL(file.file)}
+                                  alt={file.file.name}
+                                  className="w-10 h-10 object-cover rounded"
+                                />
+                              )}
+                              <span>{file.file.name}</span>
+                              <span className="text-sm text-gray-500">
+                                {formatFileSize(file.size)}
+                              </span>
+                              <Badge
+                                className={
+                                  file.status === "completed"
+                                    ? "bg-green-400 text-white"
+                                    : "bg-orange-400 text-white"
+                                }
+                              >
+                                {file.status}
+                              </Badge>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600"
+                              onClick={() =>
+                                handleDeleteFile(selectedDocument, file.id)
+                              }
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+
+                    {/* Drag and Drop Area */}
+                    <div
+                      className="p-16 border border-dashed rounded-lg mb-4"
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (
+                          e.dataTransfer.files &&
+                          e.dataTransfer.files.length > 0
+                        ) {
+                          handleFiles(e.dataTransfer.files, selectedDocument);
+                        }
+                      }}
+                    >
+                      <p className="text-center text-gray-500">
+                        Drag and drop a file here (replaces existing file)
+                      </p>
                     </div>
-                  ))}
-                </div>
-              ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {applicants.length > 0 && (
-        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:justify-between">
-          <Button
-            variant="outline"
-            onClick={() => handleNavigation("back")}
-            disabled={!applicants.length || isFirstApplicant}
-          >
-            <ArrowLeft className="mr-2 h-5 w-5" />
-            Back
-          </Button>
-          <Button
-            onClick={() => handleNavigation("next")}
-            disabled={!applicants.length || isLastApplicant}
-          >
-            Next
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
-        </div>
-      )}
+      {/* Navigation buttons */}
+      <div className="mt-6 flex justify-between">
+        <Button
+          variant="outline"
+          onClick={() => handleNavigation("back")}
+          disabled={!applicants.length || isFirstApplicant}
+        >
+          <ArrowLeft className="mr-2 h-5 w-5" />
+          Back
+        </Button>
+        <Button
+          onClick={() => handleNavigation("next")}
+          disabled={!applicants.length || isLastApplicant}
+        >
+          Next
+          <ArrowRight className="ml-2 h-5 w-5" />
+        </Button>
+      </div>
     </div>
   );
 }
