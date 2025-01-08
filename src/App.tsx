@@ -223,7 +223,26 @@ function App() {
     }
 
     if (newIndex >= 0 && newIndex < applicants.length) {
-      setSelectedApplicant(applicants[newIndex].id);
+      const newApplicantId = applicants[newIndex].id;
+      setSelectedApplicant(newApplicantId);
+
+      // Reset selected document to the first document of the new applicant
+      const newApplicant = applicants[newIndex];
+      if (newApplicant.documents.length > 0) {
+        setSelectedDocument(newApplicant.documents[0].id);
+      } else {
+        setSelectedDocument(null);
+      }
+    }
+  };
+
+  const handleApplicantTabClick = (applicantId) => {
+    setSelectedApplicant(applicantId);
+    const applicant = applicants.find((app) => app.id === applicantId);
+    if (applicant && applicant.documents.length > 0) {
+      setSelectedDocument(applicant.documents[0].id);
+    } else {
+      setSelectedDocument(null);
     }
   };
 
@@ -307,7 +326,7 @@ function App() {
       ) : (
         <div>
           {/* Horizontal applicant tabs */}
-          <div className="mb-4 flex items-center gap-2 border-b">
+          <div className="mb-4 flex flex-col sm:flex-row items-center gap-2 border-b">
             {applicants.map((applicant) => (
               <div
                 key={applicant.id}
@@ -316,7 +335,7 @@ function App() {
                     ? "border-primary text-primary"
                     : "border-transparent hover:border-gray-200"
                 }`}
-                onClick={() => setSelectedApplicant(applicant.id)}
+                onClick={() => handleApplicantTabClick(applicant.id)}
               >
                 <span className="text-lg mr-4">{applicant.name}</span>
                 <Button
@@ -336,8 +355,8 @@ function App() {
           {selectedApplicant && (
             <div className="mt-6">
               {/* Vertical document tabs */}
-              <div className="flex gap-4">
-                <div className="">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="w-full sm:w-1/6">
                   {currentApplicant?.documents.map((doc) => (
                     <div
                       key={doc.id}
@@ -368,9 +387,9 @@ function App() {
 
                 {/* File list for the selected document */}
                 {currentApplicant?.documents.length > 0 && (
-                  <div className="w-full border px-4 rounded-lg">
+                  <div className="w-full sm:w-3/4 border px-4 rounded-lg">
                     {/* Card Header with Buttons */}
-                    <div className="flex gap-2 mb-4 bg-gray-50 border-b-4 py-2">
+                    <div className="flex flex-col sm:flex-row gap-2 mb-4 bg-gray-50 border-b-4 py-2">
                       <Button onClick={() => inputRef.current?.click()}>
                         <Plus />
                         Choose
@@ -477,19 +496,12 @@ function App() {
       )}
 
       {/* Navigation buttons */}
-      <div className="mt-6 flex justify-between">
-        <Button
-          variant="outline"
-          onClick={() => handleNavigation("back")}
-          disabled={!applicants.length || isFirstApplicant}
-        >
+      <div className="mt-6 flex justify-between border-b-4 py-10">
+        <Button onClick={() => handleNavigation("back")}>
           <ArrowLeft className="mr-2 h-5 w-5" />
           Back
         </Button>
-        <Button
-          onClick={() => handleNavigation("next")}
-          disabled={!applicants.length || isLastApplicant}
-        >
+        <Button onClick={() => handleNavigation("next")}>
           Next
           <ArrowRight className="ml-2 h-5 w-5" />
         </Button>
