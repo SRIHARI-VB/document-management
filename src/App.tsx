@@ -121,7 +121,7 @@ function App() {
               if (doc.id === docId) {
                 return {
                   ...doc,
-                  files: fileArray, // Replace existing files with the new file
+                  files: fileArray,
                 };
               }
               return doc;
@@ -198,7 +198,7 @@ function App() {
               if (doc.id === docId) {
                 return {
                   ...doc,
-                  files: [], // Clear files for this document only
+                  files: [],
                 };
               }
               return doc;
@@ -211,28 +211,59 @@ function App() {
   };
 
   const handleNavigation = (direction) => {
-    const currentIndex = applicants.findIndex(
+    const currentApplicant = applicants.find(
       (app) => app.id === selectedApplicant
     );
-    let newIndex;
+    const currentDocumentIndex = currentApplicant?.documents.findIndex(
+      (doc) => doc.id === selectedDocument
+    );
+
+    let newDocumentId = null;
+    let newApplicantId = selectedApplicant;
 
     if (direction === "next") {
-      newIndex = currentIndex + 1;
+      if (
+        currentDocumentIndex !== -1 &&
+        currentDocumentIndex < currentApplicant.documents.length - 1
+      ) {
+        newDocumentId = currentApplicant.documents[currentDocumentIndex + 1].id;
+      } else {
+        const currentApplicantIndex = applicants.findIndex(
+          (app) => app.id === selectedApplicant
+        );
+        if (currentApplicantIndex < applicants.length - 1) {
+          newApplicantId = applicants[currentApplicantIndex + 1].id;
+          const nextApplicant = applicants[currentApplicantIndex + 1];
+          if (nextApplicant.documents.length > 0) {
+            newDocumentId = nextApplicant.documents[0].id;
+          }
+        }
+      }
     } else if (direction === "back") {
-      newIndex = currentIndex - 1;
+      if (currentDocumentIndex !== -1 && currentDocumentIndex > 0) {
+        newDocumentId = currentApplicant.documents[currentDocumentIndex - 1].id;
+      } else {
+        const currentApplicantIndex = applicants.findIndex(
+          (app) => app.id === selectedApplicant
+        );
+        if (currentApplicantIndex > 0) {
+          newApplicantId = applicants[currentApplicantIndex - 1].id;
+          const previousApplicant = applicants[currentApplicantIndex - 1];
+          if (previousApplicant.documents.length > 0) {
+            newDocumentId =
+              previousApplicant.documents[
+                previousApplicant.documents.length - 1
+              ].id;
+          }
+        }
+      }
     }
 
-    if (newIndex >= 0 && newIndex < applicants.length) {
-      const newApplicantId = applicants[newIndex].id;
+    if (newApplicantId !== selectedApplicant) {
       setSelectedApplicant(newApplicantId);
-
-      // Reset selected document to the first document of the new applicant
-      const newApplicant = applicants[newIndex];
-      if (newApplicant.documents.length > 0) {
-        setSelectedDocument(newApplicant.documents[0].id);
-      } else {
-        setSelectedDocument(null);
-      }
+    }
+    if (newDocumentId !== null) {
+      setSelectedDocument(newDocumentId);
     }
   };
 
@@ -400,7 +431,7 @@ function App() {
                             (doc) => doc.id === selectedDocument
                           )?.files.length === 0
                         }
-                        onClick={() => handleUpload(selectedDocument)} // Pass the selected document ID
+                        onClick={() => handleUpload(selectedDocument)}
                       >
                         <Upload />
                         Upload
@@ -420,7 +451,7 @@ function App() {
                         ref={inputRef}
                         type="file"
                         className="hidden"
-                        multiple={false} // Allow only one file to be selected
+                        multiple={false}
                         onChange={(e) => handleChange(e, selectedDocument)}
                       />
                     </div>
